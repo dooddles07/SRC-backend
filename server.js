@@ -25,8 +25,27 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Middleware ────────────────────────────────────────────────────────────────
+// In development, allow file:// (origin = null) and any localhost port.
+// In production, restrict to ALLOWED_ORIGIN only.
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin:      process.env.ALLOWED_ORIGIN || '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, mobile apps)
+    if (!origin) return callback(null, true);
+    // Allow file:// pages (browser opens index.html directly — origin is 'null' string)
+    if (origin === 'null') return callback(null, true);
+    // In development allow any localhost or 127.0.0.1 regardless of port
+    if (process.env.NODE_ENV === 'development' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+    // Check explicit allow-list
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -66,6 +85,19 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`✅ SRC Backend running on port ${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+
+  // ── Self-ping every 15 minutes to keep the server alive ───────────────────
+  const axios = require('axios');
+  const PING_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+
+  setInterval(async () => {
+    try {
+      await axios.get(`http://localhost:${PORT}/health`, { timeout: 5000 });
+      console.log(`[Keep-alive] Server pinged at ${new Date().toISOString()}`);
+    } catch (err) {
+      console.warn(`[Keep-alive] Ping failed: ${err.message}`);
+    }
+  }, PING_INTERVAL_MS);
 });
 
 module.exports = app;

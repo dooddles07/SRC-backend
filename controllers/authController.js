@@ -5,6 +5,33 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const ghlService = require('../models/ghlService');
 
+// ── Dev-only member accounts (used when NODE_ENV=development) ─────────────────
+// These let you test the API without needing real GHL contacts.
+// Remove or ignore these in production — only GHL contacts will be used.
+const DEV_MEMBERS = [
+  {
+    id:                'dev-001',
+    membership_number: 'SRC-0001',
+    email:             'alice.tan@src.com',
+    firstName:         'Alice',
+    lastName:          'Tan',
+  },
+  {
+    id:                'dev-002',
+    membership_number: 'SRC-0002',
+    email:             'bob.lim@src.com',
+    firstName:         'Bob',
+    lastName:          'Lim',
+  },
+  {
+    id:                'dev-003',
+    membership_number: 'SRC-0003',
+    email:             'carol.ng@src.com',
+    firstName:         'Carol',
+    lastName:          'Ng',
+  },
+];
+
 const login = async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -13,14 +40,34 @@ const login = async (req, res, next) => {
     }
 
     const { membership_number, email } = req.body;
+    let member = null;
 
-    // Look up the member in GHL by membership_number
-    const contacts = await ghlService.findContactsByMember(membership_number);
+    // ── Dev mode: check local accounts first ──────────────────────────────────
+    if (process.env.NODE_ENV === 'development') {
+      member = DEV_MEMBERS.find(
+        (m) =>
+          m.membership_number === membership_number &&
+          m.email.toLowerCase() === email.toLowerCase()
+      ) || null;
+    }
 
-    // Find the contact whose email also matches
-    const member = contacts.find(
-      (c) => c.email && c.email.toLowerCase() === email.toLowerCase()
-    );
+    // ── Production (or dev fallback): look up in GHL ──────────────────────────
+    if (!member) {
+      const contacts = await ghlService.findContactsByMember(membership_number);
+      const match = contacts.find(
+        (c) => c.email && c.email.toLowerCase() === email.toLowerCase()
+      );
+
+      if (match) {
+        member = {
+          id:                match.id,
+          membership_number: membership_number,
+          email:             match.email,
+          firstName:         match.firstName || '',
+          lastName:          match.lastName  || '',
+        };
+      }
+    }
 
     if (!member) {
       return res.status(401).json({
@@ -29,12 +76,14 @@ const login = async (req, res, next) => {
       });
     }
 
+    const fullName = `${member.firstName} ${member.lastName}`.trim();
+
     const token = jwt.sign(
       {
         id:                member.id,
-        membership_number: membership_number,
+        membership_number: member.membership_number,
         email:             member.email,
-        name:              `${member.firstName || ''} ${member.lastName || ''}`.trim(),
+        name:              fullName,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
@@ -44,9 +93,9 @@ const login = async (req, res, next) => {
       success: true,
       token,
       member: {
-        membership_number,
-        email:  member.email,
-        name:   `${member.firstName || ''} ${member.lastName || ''}`.trim(),
+        membership_number: member.membership_number,
+        email:             member.email,
+        name:              fullName,
       },
     });
   } catch (err) {
