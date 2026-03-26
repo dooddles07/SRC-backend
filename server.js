@@ -29,6 +29,7 @@ const webhookRoutes      = require('./routes/webhook');
 const pipelineRoutes     = require('./routes/pipeline');
 const memberRoutes       = require('./routes/member');
 const calendarRoutes     = require('./routes/calendar');
+const staffRoutes        = require('./routes/staff');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -82,6 +83,7 @@ app.use('/api/webhooks',          webhookRoutes);
 app.use('/api/pipelines',         pipelineRoutes);
 app.use('/api/member',            memberRoutes);
 app.use('/api/calendars',         calendarRoutes);
+app.use('/api/staff',             staffRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

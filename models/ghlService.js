@@ -286,6 +286,11 @@ const getContactAppointments = async (contactId) => {
   return data.events || [];
 };
 
+// ─── GHL API: Update a contact's custom fields ───────────────────────────────
+const updateContactCustomFields = async (contactId, customFields) => {
+  return ghlApiPut(`/contacts/${contactId}`, { customFields });
+};
+
 module.exports = {
   sendBooking,
   sendCancellation,
@@ -303,4 +308,5 @@ module.exports = {
   getContactById,
   getContactAppointments,
   getCalendarFreeSlots,
+  updateContactCustomFields,
 };

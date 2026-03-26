@@ -36,6 +36,10 @@ const handleGhlEvent = async (req, res, next) => {
         handleStatusUpdate(payload);
         break;
 
+      case 'late_cancellation_flagged':
+        handleLateCancellation(payload);
+        break;
+
       case 'pipeline_stage_changed':
         handlePipelineStageChange(payload);
         break;
@@ -72,6 +76,13 @@ const handleStatusUpdate = async (payload) => {
   if (!booking_reference || !new_status) return;
   await bookingStore.updateStatus(booking_reference, new_status);
   console.log(`[GHL Event] Status updated — ${booking_reference}: ${new_status}`);
+};
+
+const handleLateCancellation = async (payload) => {
+  const { booking_reference } = payload;
+  if (!booking_reference) return;
+  await bookingStore.flagLateCancellation(booking_reference);
+  console.log(`[GHL Event] Late cancellation flagged: ${booking_reference}`);
 };
 
 const handlePipelineStageChange = (payload) => {

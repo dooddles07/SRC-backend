@@ -2,8 +2,10 @@
 const express = require('express');
 const router  = express.Router();
 const { body } = require('express-validator');
-const { login } = require('../controllers/authController');
+const { login }       = require('../controllers/authController');
+const { staffLogin }  = require('../controllers/staffAuthController');
 
+// Member login (membership number + email)
 router.post(
   '/login',
   [
@@ -12,5 +14,8 @@ router.post(
   ],
   login
 );
+
+// Staff login (username + password)
+router.post('/staff/login', staffLogin);
 
 module.exports = router;
