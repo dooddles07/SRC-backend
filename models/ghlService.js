@@ -126,6 +126,7 @@ const sendGuestRegistration = async (data) => {
     slot_date:          data.slot_date,
     facility_or_venue:  data.facility_or_venue,
     booking_shift:      data.booking_shift || '',
+    booking_reference:  data.booking_reference || '',
   };
 
   return postToWebhook(ghlConfig.webhooks.guestRegistration, payload);
