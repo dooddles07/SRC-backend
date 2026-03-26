@@ -4,6 +4,13 @@
 const axios = require('axios');
 const ghlConfig = require('../config/ghl');
 
+// ─── GHL custom field IDs ─────────────────────────────────────────────────────
+const FACILITY_VENUE_FIELD_ID   = 'Bq7GyXHl7R1CkTTMsgrQ'; // contact.facility_or_venue
+const SLOT_DATE_FIELD_ID        = '8F0oLk8zIWl8yiCUGXLU'; // contact.slot_date
+const SLOT_START_TIME_FIELD_ID  = 'kxwtxq6k8SSFfCtzpNuE'; // contact.slot_start_time
+const PAX_FIELD_ID              = 'xlQ10Z5Sslipo9Gt5pME'; // contact.outlet_pax
+const SPECIAL_REQUEST_FIELD_ID  = 'uX31vc3MUdjyFVq7vQaB'; // contact.special_request
+
 // ─── Helper: POST to a GHL inbound webhook ───────────────────────────────────
 const postToWebhook = async (url, payload) => {
   if (!url) throw new Error('GHL webhook URL is not configured in .env');
@@ -62,22 +69,34 @@ const ghlApiPut = async (endpoint, payload = {}) => {
 // ─── Webhook #1: New Booking (FORM-01) ───────────────────────────────────────
 const sendBooking = async (data) => {
   const payload = {
-    email:                data.email,
-    phone:                data.phone,
-    name:                 data.name,
-    membership_number:    data.membership_number,
-    facility_or_venue:    data.facility_or_venue,
-    booking_shift:        data.booking_shift || '',
-    slot_date:            data.slot_date,
-    slot_start_time:      data.slot_start_time,
-    slot_end_time:        data.slot_end_time,
-    outlet_pax:           data.outlet_pax,
-    booking_reference:    data.booking_reference,
-    booking_type:         data.booking_type || 'advance',
-    cancellation_deadline: data.cancellation_deadline,
-    overdue_check_at:     data.overdue_check_at,
-    no_show_check_at:     data.no_show_check_at,
-    feedback_send_at:     data.feedback_send_at,
+    email:                      data.email,
+    phone:                      data.phone,
+    name:                       data.name,
+    membership_number:          data.membership_number,
+    // facility_or_venue custom field
+    facility_or_venue:          data.facility_or_venue,
+    facility_field_id:          FACILITY_VENUE_FIELD_ID,
+    // calendar (matched per facility)
+    calendar_id:                data.calendar_id || '',
+    slot_date:                  data.slot_date,
+    slot_date_field_id:         SLOT_DATE_FIELD_ID,
+    // full ISO datetimes for calendar appointment
+    slot_start_time:            data.slot_start_time,
+    slot_end_time:              data.slot_end_time,
+    // plain HH:MM time for contact.slot_start_time custom field
+    slot_time:                  data.slot_time || '',
+    slot_start_time_field_id:   SLOT_START_TIME_FIELD_ID,
+    // pax for contact.outlet_pax custom field
+    outlet_pax:                 data.outlet_pax,
+    pax_field_id:               PAX_FIELD_ID,
+    booking_reference:          data.booking_reference,
+    booking_type:               data.booking_type || 'advance',
+    special_request:            data.special_request || '',
+    special_request_field_id:   SPECIAL_REQUEST_FIELD_ID,
+    cancellation_deadline:      data.cancellation_deadline,
+    overdue_check_at:           data.overdue_check_at,
+    no_show_check_at:           data.no_show_check_at,
+    feedback_send_at:           data.feedback_send_at,
   };
 
   return postToWebhook(ghlConfig.webhooks.booking, payload);
@@ -146,6 +165,20 @@ const findContactByReference = async (booking_reference) => {
       (f) => f.fieldKey === 'booking_reference' && f.value === booking_reference
     )
   ) || null;
+};
+
+// ─── GHL API: Get free slots from a GHL calendar ─────────────────────────────
+const getCalendarFreeSlots = async (calendarId, startDate, endDate) => {
+  // GHL expects Unix timestamps in milliseconds
+  const toMs = (dateStr) => new Date(dateStr).getTime();
+
+  const data = await ghlApiGet(`/calendars/${calendarId}/free-slots`, {
+    startDate: toMs(startDate),
+    endDate:   toMs(endDate),
+    timezone:  'Asia/Singapore',
+  });
+
+  return data;
 };
 
 // ─── GHL API: List all pipelines for this location ───────────────────────────
@@ -231,4 +264,5 @@ module.exports = {
   updateOpportunityStage,
   findContactsByMember,
   getContactById,
+  getCalendarFreeSlots,
 };

@@ -52,7 +52,14 @@ const getMemberBookings = async (req, res, next) => {
     // req.user is set by the authenticate middleware from the JWT
     const { membership_number } = req.user;
 
-    const contacts = await ghlService.findContactsByMember(membership_number);
+    let contacts = [];
+    try {
+      contacts = await ghlService.findContactsByMember(membership_number);
+    } catch (ghlErr) {
+      // GHL API is unavailable — return empty list so the dashboard still loads
+      console.error(`[getMemberBookings] GHL API error: ${ghlErr.message}`);
+      return res.status(200).json({ success: true, count: 0, bookings: [] });
+    }
 
     if (!contacts.length) {
       return res.status(200).json({

@@ -2,12 +2,23 @@
 // Global error handler
 
 const errorHandler = (err, req, res, next) => {
-  console.error(`[ERROR] ${err.message}`);
+  // Axios errors carry the response on err.response; extract status + body
+  const axiosStatus  = err.response?.status;
+  const axiosMessage = err.response?.data?.message || err.response?.data;
 
-  const statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || axiosStatus || 500;
+  const message    = (typeof axiosMessage === 'string' ? axiosMessage : null)
+                  || err.message
+                  || 'Internal server error';
+
+  console.error(`[ERROR] ${statusCode} — ${message}`);
+  if (axiosStatus) {
+    console.error(`[GHL Response] status=${axiosStatus}`, JSON.stringify(err.response?.data));
+  }
+
   res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal server error',
+    message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };

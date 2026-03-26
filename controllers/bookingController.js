@@ -18,18 +18,22 @@ const createBooking = async (req, res, next) => {
       name,
       membership_number,
       facility_or_venue,
-      booking_shift,
+      calendar_id,
       slot_date,
       slot_start_time,
       slot_end_time,
       outlet_pax,
       booking_type,
+      special_request,
     } = req.body;
 
     // Generate reference number
     const booking_reference = generateBookingReference(slot_date);
 
-    // Build full datetime strings for GHL (YYYY-MM-DDTHH:MM:SS)
+    // Preserve plain HH:MM time for the slot_start_time custom field
+    const slotTime = slot_start_time;
+
+    // Build full datetime strings for GHL calendar appointment (YYYY-MM-DDTHH:MM:SS)
     const startDateTime = `${slot_date}T${slot_start_time}:00`;
     const endDateTime   = `${slot_date}T${slot_end_time}:00`;
 
@@ -43,13 +47,15 @@ const createBooking = async (req, res, next) => {
       name,
       membership_number,
       facility_or_venue,
-      booking_shift:    booking_shift || '',
+      calendar_id:       calendar_id || '',
       slot_date,
-      slot_start_time:  startDateTime,
-      slot_end_time:    endDateTime,
+      slot_start_time:   startDateTime,  // full ISO datetime for calendar appointment
+      slot_end_time:     endDateTime,
+      slot_time:         slotTime,        // plain HH:MM for contact.slot_start_time field
       outlet_pax,
       booking_reference,
-      booking_type:     booking_type || 'advance',
+      booking_type:      booking_type || 'advance',
+      special_request:   special_request || '',
       ...timestamps,
     });
 
