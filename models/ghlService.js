@@ -10,6 +10,7 @@ const SLOT_DATE_FIELD_ID        = '8F0oLk8zIWl8yiCUGXLU'; // contact.slot_date
 const SLOT_START_TIME_FIELD_ID  = 'kxwtxq6k8SSFfCtzpNuE'; // contact.slot_start_time
 const PAX_FIELD_ID              = 'xlQ10Z5Sslipo9Gt5pME'; // contact.outlet_pax
 const SPECIAL_REQUEST_FIELD_ID  = 'uX31vc3MUdjyFVq7vQaB'; // contact.special_request
+const BOOKING_SHIFT_FIELD_ID    = 'oiy68P9Gw75biepxirp0'; // contact.booking_shift
 
 // ─── Helper: POST to a GHL inbound webhook ───────────────────────────────────
 const postToWebhook = async (url, payload) => {
@@ -91,6 +92,8 @@ const sendBooking = async (data) => {
     pax_field_id:               PAX_FIELD_ID,
     booking_reference:          data.booking_reference,
     booking_type:               data.booking_type || 'advance',
+    booking_shift:              data.booking_shift || '',
+    booking_shift_field_id:     BOOKING_SHIFT_FIELD_ID,
     special_request:            data.special_request || '',
     special_request_field_id:   SPECIAL_REQUEST_FIELD_ID,
     cancellation_deadline:      data.cancellation_deadline,
@@ -122,6 +125,7 @@ const sendGuestRegistration = async (data) => {
     inviting_member_id: data.inviting_member_id,
     slot_date:          data.slot_date,
     facility_or_venue:  data.facility_or_venue,
+    booking_shift:      data.booking_shift || '',
   };
 
   return postToWebhook(ghlConfig.webhooks.guestRegistration, payload);
@@ -179,6 +183,30 @@ const getCalendarFreeSlots = async (calendarId, startDate, endDate) => {
   });
 
   return data;
+};
+
+// ─── GHL API: Find a contact by email ────────────────────────────────────────
+const findContactByEmail = async (email) => {
+  const data = await ghlApiGet('/contacts/search', {
+    locationId: ghlConfig.api.locationId,
+    query:      email,
+  });
+
+  const contacts = data.contacts || [];
+  return contacts.find((c) => c.email === email) || null;
+};
+
+// ─── GHL API: Create a calendar appointment ──────────────────────────────────
+const createAppointment = async ({ calendarId, contactId, startTime, endTime, title, status = 'confirmed' }) => {
+  return ghlApiPost('/calendars/events/appointments', {
+    calendarId,
+    locationId:        ghlConfig.api.locationId,
+    contactId,
+    startTime,
+    endTime,
+    title,
+    appointmentStatus: status,
+  });
 };
 
 // ─── GHL API: List all pipelines for this location ───────────────────────────
@@ -258,6 +286,8 @@ module.exports = {
   sendWalkin,
   sendCheckin,
   findContactByReference,
+  findContactByEmail,
+  createAppointment,
   getPipelines,
   getOpportunities,
   createOpportunity,

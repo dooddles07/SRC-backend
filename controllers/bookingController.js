@@ -5,6 +5,14 @@ const { validationResult } = require('express-validator');
 const ghlService            = require('../models/ghlService');
 const { generateBookingReference, computeTimestamps } = require('../models/referenceGenerator');
 
+// ── Helper: convert "HH:MM" (24h) → "HH:MM AM/PM" (12h) ───────────────────
+function to12Hour(time24) {
+  const [h, m] = time24.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12    = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 const createBooking = async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -19,6 +27,7 @@ const createBooking = async (req, res, next) => {
       membership_number,
       facility_or_venue,
       calendar_id,
+      booking_shift,
       slot_date,
       slot_start_time,
       slot_end_time,
@@ -33,14 +42,26 @@ const createBooking = async (req, res, next) => {
     // Preserve plain HH:MM time for the slot_start_time custom field
     const slotTime = slot_start_time;
 
-    // Build full datetime strings for GHL calendar appointment (YYYY-MM-DDTHH:MM:SS)
-    const startDateTime = `${slot_date}T${slot_start_time}:00`;
-    const endDateTime   = `${slot_date}T${slot_end_time}:00`;
+    // Build GHL-compatible datetime strings for the Book Appointment workflow action.
+    // GHL expects: "YYYY-MM-DD HH:MM AM" (12-hour with AM/PM, no T separator).
+    const startDateTime = `${slot_date} ${to12Hour(slot_start_time)}`;
 
-    // Compute timestamps
-    const timestamps = computeTimestamps(startDateTime, endDateTime);
+    // If end time is earlier than or equal to start time the booking crosses midnight —
+    // advance the end date by one day so GHL receives a valid appointment window.
+    let endDate = slot_date;
+    if (slot_end_time <= slot_start_time) {
+      const d = new Date(`${slot_date}T00:00:00`);
+      d.setDate(d.getDate() + 1);
+      endDate = d.toISOString().split('T')[0];
+    }
+    const endDateTime = `${endDate} ${to12Hour(slot_end_time)}`;
 
-    // Send to GHL
+    // Compute timestamps (these still need ISO format internally)
+    const isoStart = `${slot_date}T${slot_start_time}:00`;
+    const isoEnd   = `${endDate}T${slot_end_time}:00`;
+    const timestamps = computeTimestamps(isoStart, isoEnd);
+
+    // Send to GHL webhook (contact creation, custom fields, workflow triggers)
     await ghlService.sendBooking({
       email,
       phone,
@@ -48,8 +69,9 @@ const createBooking = async (req, res, next) => {
       membership_number,
       facility_or_venue,
       calendar_id:       calendar_id || '',
+      booking_shift:     booking_shift || '',
       slot_date,
-      slot_start_time:   startDateTime,  // full ISO datetime for calendar appointment
+      slot_start_time:   startDateTime,  // "YYYY-MM-DD HH:MM AM/PM" for Book Appointment action
       slot_end_time:     endDateTime,
       slot_time:         slotTime,        // plain HH:MM for contact.slot_start_time field
       outlet_pax,

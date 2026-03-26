@@ -19,6 +19,7 @@ const registerGuest = async (req, res, next) => {
       inviting_member_id,
       slot_date,
       facility_or_venue,
+      booking_shift,
     } = req.body;
 
     await ghlService.sendGuestRegistration({
@@ -29,6 +30,7 @@ const registerGuest = async (req, res, next) => {
       inviting_member_id,
       slot_date,
       facility_or_venue,
+      booking_shift:      booking_shift || '',
     });
 
     return res.status(200).json({
