@@ -87,6 +87,7 @@ const createBooking = async (req, res, next) => {
     await bookingStore.save({
       booking_reference,
       membership_number,
+      ghl_contact_id:  req.user?.id || null,
       email,
       name,
       facility_or_venue,

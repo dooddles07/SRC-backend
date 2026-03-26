@@ -5,6 +5,7 @@ const bookingSchema = new mongoose.Schema(
   {
     booking_reference: { type: String, required: true, unique: true },
     membership_number: { type: String, required: true, index: true },
+    ghl_contact_id:    { type: String },
     email:             { type: String },
     name:              { type: String },
     facility_or_venue: { type: String },
