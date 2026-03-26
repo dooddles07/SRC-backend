@@ -1,6 +1,8 @@
 // controllers/webhookController.js
 // Receives inbound webhook events FROM GHL (when automations fire back to us)
 
+const bookingStore = require('../models/bookingStore');
+
 const handleGhlEvent = async (req, res, next) => {
   try {
     // ── Simple secret guard ───────────────────────────────────────────────────
@@ -64,9 +66,12 @@ const handleFeedbackSent = (payload) => {
   console.log(`[GHL Event] Feedback sent for booking: ${payload.booking_reference}`);
 };
 
-const handleStatusUpdate = (payload) => {
+const handleStatusUpdate = async (payload) => {
   // payload should contain: booking_reference, new_status
-  console.log(`[GHL Event] Status updated — ${payload.booking_reference}: ${payload.new_status}`);
+  const { booking_reference, new_status } = payload;
+  if (!booking_reference || !new_status) return;
+  await bookingStore.updateStatus(booking_reference, new_status);
+  console.log(`[GHL Event] Status updated — ${booking_reference}: ${new_status}`);
 };
 
 const handlePipelineStageChange = (payload) => {

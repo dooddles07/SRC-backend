@@ -3,6 +3,7 @@
 
 const { validationResult } = require('express-validator');
 const ghlService            = require('../models/ghlService');
+const bookingStore          = require('../models/bookingStore');
 
 const cancelBooking = async (req, res, next) => {
   try {
@@ -14,6 +15,8 @@ const cancelBooking = async (req, res, next) => {
     const { email, booking_reference } = req.body;
 
     await ghlService.sendCancellation({ email, booking_reference });
+
+    await bookingStore.updateStatus(booking_reference, 'Cancelled');
 
     return res.status(200).json({
       success: true,

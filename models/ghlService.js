@@ -166,7 +166,7 @@ const findContactByReference = async (booking_reference) => {
   const contacts = data.contacts || [];
   return contacts.find(
     (c) => c.customFields?.find(
-      (f) => f.fieldKey === 'booking_reference' && f.value === booking_reference
+      (f) => f.fieldKey === 'contact.booking_reference' && f.value === booking_reference
     )
   ) || null;
 };
@@ -268,7 +268,7 @@ const findContactsByMember = async (membership_number) => {
   const contacts = data.contacts || [];
   return contacts.filter(
     (c) => c.customFields?.find(
-      (f) => f.fieldKey === 'membership_number' && f.value === String(membership_number)
+      (f) => f.fieldKey === 'contact.membership_number' && f.value === String(membership_number)
     )
   );
 };
@@ -277,6 +277,12 @@ const findContactsByMember = async (membership_number) => {
 const getContactById = async (contactId) => {
   const data = await ghlApiGet(`/contacts/${contactId}`);
   return data.contact || null;
+};
+
+// ─── GHL API: Get all appointments for a contact ──────────────────────────────
+const getContactAppointments = async (contactId) => {
+  const data = await ghlApiGet(`/contacts/${contactId}/appointments`);
+  return data.events || [];
 };
 
 module.exports = {
@@ -294,5 +300,6 @@ module.exports = {
   updateOpportunityStage,
   findContactsByMember,
   getContactById,
+  getContactAppointments,
   getCalendarFreeSlots,
 };

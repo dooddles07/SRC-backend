@@ -3,9 +3,17 @@
 
 require('dotenv').config();
 
-const express = require('express');
-const cors    = require('cors');
-const morgan  = require('morgan');
+const express  = require('express');
+const cors     = require('cors');
+const morgan   = require('morgan');
+const mongoose = require('mongoose');
+const dns      = require('dns');
+
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => console.error('❌ MongoDB connection error:', err.message));
 
 const { errorHandler } = require('./middleware/errorHandler');
 

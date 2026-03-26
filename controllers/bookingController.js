@@ -4,6 +4,7 @@
 const { validationResult } = require('express-validator');
 const ghlService            = require('../models/ghlService');
 const { generateBookingReference, computeTimestamps } = require('../models/referenceGenerator');
+const bookingStore          = require('../models/bookingStore');
 
 // ── Helper: convert "HH:MM" (24h) → "HH:MM AM/PM" (12h) ───────────────────
 function to12Hour(time24) {
@@ -79,6 +80,25 @@ const createBooking = async (req, res, next) => {
       booking_type:      booking_type || 'advance',
       special_request:   special_request || '',
       ...timestamps,
+    });
+
+    // Save to DB immediately — GHL workflows are async so the contact
+    // custom fields won't be ready by the time the dashboard calls /api/member/bookings
+    await bookingStore.save({
+      booking_reference,
+      membership_number,
+      email,
+      name,
+      facility_or_venue,
+      booking_type:    booking_type  || 'advance',
+      booking_status:  'Confirmed',
+      booking_shift:   booking_shift || '',
+      slot_date,
+      slot_start_time: slotTime,   // plain HH:MM — what the dashboard formatDisplayTime expects
+      slot_end_time:   slot_end_time,
+      outlet_pax:      outlet_pax   || null,
+      notes:           special_request || null,
+      created_at:      new Date().toISOString(),
     });
 
     return res.status(200).json({
