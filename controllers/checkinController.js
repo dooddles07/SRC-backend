@@ -3,6 +3,7 @@
 
 const { validationResult } = require('express-validator');
 const ghlService            = require('../models/ghlService');
+const bookingStore          = require('../models/bookingStore');
 
 const validateAndCheckin = async (req, res, next) => {
   try {
@@ -13,11 +14,11 @@ const validateAndCheckin = async (req, res, next) => {
 
     const { booking_reference, checked_in_by } = req.body;
 
-    // ── Step 1: Find contact in GHL by booking_reference ──────────────────────
-    const contact = await ghlService.findContactByReference(booking_reference);
+    // ── Step 1: Find booking in MongoDB ───────────────────────────────────────
+    const booking = await bookingStore.getByReference(booking_reference);
 
-    if (!contact) {
-      return res.status(404).json({
+    if (!booking) {
+      return res.status(200).json({
         success: false,
         valid:   false,
         reason:  'INVALID_REFERENCE',
@@ -25,18 +26,10 @@ const validateAndCheckin = async (req, res, next) => {
       });
     }
 
-    const getField = (key) =>
-      contact.customFields?.find((f) => f.fieldKey === key)?.value || null;
-
-    const bookingStatus  = getField('booking_status');
-    const slotDate       = getField('slot_date');
-    const checkedInAt    = getField('checked_in_at');
-    const email          = contact.email;
-
     // ── Step 2: Validate ───────────────────────────────────────────────────────
 
     // Already checked in?
-    if (checkedInAt || bookingStatus === 'checked_in') {
+    if (booking.booking_status === 'Checked In') {
       return res.status(200).json({
         success: false,
         valid:   false,
@@ -45,19 +38,19 @@ const validateAndCheckin = async (req, res, next) => {
       });
     }
 
-    // Booking cancelled or no-show?
-    if (['cancelled', 'no_show'].includes(bookingStatus)) {
+    // Booking cancelled, no-show, or not confirmed?
+    if (!['Confirmed'].includes(booking.booking_status)) {
       return res.status(200).json({
         success: false,
         valid:   false,
         reason:  'INVALID_STATUS',
-        message: `Booking status is ${bookingStatus}.`,
+        message: `Booking status is ${booking.booking_status}.`,
       });
     }
 
-    // Date check — slot_date must be today
-    const today    = new Date().toISOString().split('T')[0];
-    const slotDay  = slotDate ? slotDate.split('T')[0] : null;
+    // Date check — slot_date must be today (SGT)
+    const today   = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+    const slotDay = booking.slot_date ? booking.slot_date.split('T')[0] : null;
 
     if (slotDay !== today) {
       return res.status(200).json({
@@ -68,23 +61,30 @@ const validateAndCheckin = async (req, res, next) => {
       });
     }
 
-    // ── Step 3: All valid — send check-in webhook to GHL ──────────────────────
-    await ghlService.sendCheckin({
-      email,
-      booking_reference,
-      checked_in_by,
-    });
+    // ── Step 3: Mark as checked in in MongoDB ─────────────────────────────────
+    await bookingStore.updateStatus(booking_reference, 'Checked In');
+
+    // ── Step 4: Send check-in webhook to GHL (best-effort) ────────────────────
+    try {
+      await ghlService.sendCheckin({
+        email:             booking.email,
+        booking_reference,
+        checked_in_by,
+      });
+    } catch (ghlErr) {
+      console.warn('[Checkin] GHL webhook failed (non-fatal):', ghlErr.message);
+    }
 
     return res.status(200).json({
       success: true,
       valid:   true,
       message: 'Check-in confirmed.',
       contact: {
-        name:              contact.firstName + ' ' + (contact.lastName || ''),
-        email,
+        name:              booking.name,
+        email:             booking.email,
         booking_reference,
-        facility_or_venue: getField('facility_or_venue'),
-        slot_date:         slotDate,
+        facility_or_venue: booking.facility_or_venue,
+        slot_date:         booking.slot_date,
       },
     });
   } catch (err) {
