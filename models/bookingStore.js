@@ -13,7 +13,7 @@ async function save(booking) {
 }
 
 async function getByMember(membership_number) {
-  return Booking.find({ membership_number }).sort({ createdAt: -1 }).lean();
+  return Booking.find({ membership_number }).sort({ slot_date: 1 }).lean();
 }
 
 async function updateStatus(booking_reference, booking_status) {
