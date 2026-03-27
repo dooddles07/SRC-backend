@@ -30,6 +30,13 @@ const DEV_MEMBERS = [
     firstName:         'Carol',
     lastName:          'Ng',
   },
+  {
+    id:                'dev-004',
+    membership_number: 'SRC-0004',
+    email:             'brixdodd07@gmail.com',
+    firstName:         'David',
+    lastName:          'Chen',
+  },
 ];
 
 const login = async (req, res, next) => {
