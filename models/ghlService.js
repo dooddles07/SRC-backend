@@ -91,6 +91,7 @@ const sendBooking = async (data) => {
     outlet_pax:                 data.outlet_pax,
     pax_field_id:               PAX_FIELD_ID,
     booking_reference:          data.booking_reference,
+    booking_status:             'Confirmed',
     booking_type:               data.booking_type || 'advance',
     booking_shift:              data.booking_shift || '',
     booking_shift_field_id:     BOOKING_SHIFT_FIELD_ID,
