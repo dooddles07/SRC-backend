@@ -65,4 +65,32 @@ const getBookingByReference = async (req, res, next) => {
   }
 };
 
-module.exports = { getBookingByReference, getMemberBookings };
+// ── PUT /api/member/bookings/:reference ───────────────────────────────────────
+// Allows a member to update editable fields on their own upcoming booking.
+const updateMemberBooking = async (req, res, next) => {
+  try {
+    const { reference } = req.params;
+    const { membership_number } = req.user;
+
+    // Verify the booking belongs to this member
+    const existing = await bookingStore.getByReference(reference);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Booking not found.' });
+    }
+    if (existing.membership_number !== membership_number) {
+      return res.status(403).json({ success: false, message: 'Not authorised to edit this booking.' });
+    }
+
+    const status = (existing.booking_status || '').toLowerCase().replace(/[\s_]+/g, '-');
+    if (['cancelled', 'checked-in', 'no-show'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'This booking can no longer be edited.' });
+    }
+
+    const updated = await bookingStore.updateBooking(reference, req.body);
+    return res.status(200).json({ success: true, booking: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getBookingByReference, getMemberBookings, updateMemberBooking };

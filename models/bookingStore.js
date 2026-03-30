@@ -24,6 +24,20 @@ async function updateStatus(booking_reference, booking_status) {
   return !!result;
 }
 
+async function updateBooking(booking_reference, updates) {
+  const allowed = ['slot_date', 'slot_start_time', 'slot_end_time', 'outlet_pax', 'notes'];
+  const filtered = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) filtered[key] = updates[key];
+  }
+  const result = await Booking.findOneAndUpdate(
+    { booking_reference },
+    filtered,
+    { new: true }
+  );
+  return result;
+}
+
 async function getByDate(slot_date) {
   return Booking.find({ slot_date }).sort({ slot_start_time: 1 }).lean();
 }
@@ -58,4 +72,4 @@ async function getByReference(booking_reference) {
   return Booking.findOne({ booking_reference }).lean();
 }
 
-module.exports = { save, getByMember, updateStatus, getByDate, getByDateAndVenues, getLateCancellations, flagLateCancellation, waiveFee, getByReference };
+module.exports = { save, getByMember, updateStatus, updateBooking, getByDate, getByDateAndVenues, getLateCancellations, flagLateCancellation, waiveFee, getByReference };
