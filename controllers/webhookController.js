@@ -40,6 +40,10 @@ const handleGhlEvent = async (req, res, next) => {
         handleLateCancellation(payload);
         break;
 
+      case 'chatbot_booking':
+        await handleChatbotBooking(payload);
+        break;
+
       case 'pipeline_stage_changed':
         handlePipelineStageChange(payload);
         break;
@@ -88,6 +92,41 @@ const handleLateCancellation = async (payload) => {
 const handlePipelineStageChange = (payload) => {
   // payload should contain: opportunity_id, pipeline_id, old_stage, new_stage, contact_id
   console.log(`[GHL Event] Pipeline stage changed: ${payload.opportunity_id} → ${payload.new_stage}`);
+};
+
+const handleChatbotBooking = async (payload) => {
+  const {
+    booking_reference,
+    membership_number,
+    email,
+    name,
+    facility_or_venue,
+    slot_date,
+    slot_start_time,
+    slot_end_time,
+    booking_shift,
+    outlet_pax,
+  } = payload;
+
+  if (!booking_reference || !membership_number || !email) return;
+
+  await bookingStore.save({
+    booking_reference,
+    membership_number,
+    email,
+    name:            name || '',
+    facility_or_venue,
+    booking_type:    'advance',
+    booking_status:  'Confirmed',
+    booking_shift:   booking_shift || '',
+    slot_date,
+    slot_start_time: slot_start_time || '',
+    slot_end_time:   slot_end_time   || '',
+    outlet_pax:      outlet_pax      || null,
+    created_at:      new Date().toISOString(),
+  });
+
+  console.log(`[GHL Event] Chatbot booking saved to MongoDB: ${booking_reference}`);
 };
 
 module.exports = { handleGhlEvent };
