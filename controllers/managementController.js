@@ -15,7 +15,7 @@ const facilityOrVenue = (name) => FACILITIES.includes(name) ? 'Facility' : 'Venu
 // ── Venue capacity config ────────────────────────────────────────────────────
 const VENUE_CAPACITY = {
   'Tennis':            { cap: 4, type: 'slot' },       // 4 courts, 1 booking/slot each
-  'Squash':            { cap: 1, type: 'slot' },
+  'Squash':            { cap: 4, type: 'slot' },
   'Gym':               { cap: 20, type: 'pax' },
   'Le Mansion':        { cap: 15, buffer: 3, type: 'booking' },
   'Barkerslounge':     { cap: 10, buffer: 2, type: 'booking' },
@@ -23,7 +23,7 @@ const VENUE_CAPACITY = {
 };
 
 // Total slot capacity across all venues for utilisation %
-const TOTAL_DAILY_CAPACITY = 4 + 1 + 20 + 15 + 15 + 10 + 12; // Tennis(4) + Squash(1) + Gym(20) + LeMansion Lunch(15) + Dinner(15) + Barkers(10) + Oasis(12) = 77
+const TOTAL_DAILY_CAPACITY = 4 + 4 + 20 + 15 + 15 + 10 + 12; // Tennis(4) + Squash(4) + Gym(20) + LeMansion Lunch(15) + Dinner(15) + Barkers(10) + Oasis(12) = 80
 
 // ── GET /api/management/dashboard ────────────────────────────────────────────
 const getDashboard = async (req, res, next) => {
@@ -97,7 +97,7 @@ const getOccupancy = async (req, res, next) => {
       date,
       venues: {
         tennis:           { count: tennis.length, cap: 4 },
-        squash:           { count: squash.length, cap: 1 },
+        squash:           { count: squash.length, cap: 4 },
         gym:              { count: gymPax, cap: 20 },
         leMansionLunch:   { count: sumPax(leMansionLunch), cap: 15, buffer: 3 },
         leMansionDinner:  { count: sumPax(leMansionDinner), cap: 15, buffer: 3 },
