@@ -6,8 +6,10 @@ const { authenticate }           = require('../middleware/auth');
 const eventCtrl = require('../controllers/eventController');
 
 // ── Management routes (require mgmt auth) ────────────────────────────────────
-router.get('/management',    managementAuthenticate, eventCtrl.getEvents);
-router.post('/management',   managementAuthenticate, eventCtrl.createEvent);
+router.get('/management',        managementAuthenticate, eventCtrl.getEvents);
+router.post('/management',       managementAuthenticate, eventCtrl.createEvent);
+router.get('/management/:id',    managementAuthenticate, eventCtrl.getEventById);
+router.put('/management/:id',    managementAuthenticate, eventCtrl.updateEvent);
 router.delete('/management/:id', managementAuthenticate, eventCtrl.deleteEvent);
 
 // ── Member-facing routes (require member auth) ───────────────────────────────

@@ -67,6 +67,20 @@ const ghlApiPut = async (endpoint, payload = {}) => {
   return response.data;
 };
 
+// ─── Helper: GHL API DELETE request ──────────────────────────────────────────
+const ghlApiDelete = async (endpoint) => {
+  const response = await axios.delete(`${ghlConfig.api.baseUrl}${endpoint}`, {
+    headers: {
+      Authorization: `Bearer ${ghlConfig.api.key}`,
+      'Content-Type': 'application/json',
+      Version: '2021-07-28',
+    },
+    timeout: 10000,
+  });
+
+  return response.data;
+};
+
 // ─── Webhook #1: New Booking (FORM-01) ───────────────────────────────────────
 const sendBooking = async (data) => {
   const payload = {
@@ -324,4 +338,5 @@ module.exports = {
   addContactTags,
   ghlApiPost,
   ghlApiGet,
+  ghlApiDelete,
 };

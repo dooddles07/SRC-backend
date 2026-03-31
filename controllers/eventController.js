@@ -75,12 +75,89 @@ const getEvents = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── DELETE /api/management/events/:id — Archive an event ─────────────────────
+// ── GET /api/management/events/:id — Get single event (admin) ────────────────
+const getEventById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findById(id).lean();
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    return res.json({ success: true, event });
+  } catch (err) { next(err); }
+};
+
+// ── PUT /api/management/events/:id — Update an event ─────────────────────────
+const updateEvent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { event_name, event_description, event_date, event_duration, image, pdf, pdf_filename } = req.body;
+
+    if (!event_name || !event_description || !event_date || !event_duration) {
+      return res.status(422).json({ success: false, message: 'All required fields must be provided.' });
+    }
+
+    const updates = {
+      event_name,
+      event_description,
+      event_date,
+      event_duration,
+    };
+
+    // Only update image/pdf if new ones are provided (non-empty)
+    if (image !== undefined && image !== '') updates.image_url = image;
+    if (pdf !== undefined && pdf !== '') { updates.pdf_url = pdf; updates.pdf_filename = pdf_filename || ''; }
+    // Allow clearing pdf
+    if (pdf === '') { updates.pdf_url = ''; updates.pdf_filename = ''; }
+
+    const event = await Event.findByIdAndUpdate(id, updates, { new: true }).lean();
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+
+    // Sync update to GHL (best-effort)
+    try {
+      const ghlConfig = require('../config/ghl');
+      // Search for the GHL contact associated with this event
+      const searchResult = await ghlService.ghlApiGet('/contacts/search', {
+        locationId: ghlConfig.api.locationId,
+        query: `EVENT: ${event_name}`,
+      });
+      const contacts = searchResult.contacts || [];
+      if (contacts.length > 0) {
+        await ghlService.updateContactCustomFields(contacts[0].id, [
+          { id: EVENT_NAME_FIELD_ID,        field_value: event_name },
+          { id: EVENT_DESCRIPTION_FIELD_ID, field_value: event_description },
+          { id: EVENT_DATE_FIELD_ID,        field_value: event_date },
+          { id: EVENT_DURATION_FIELD_ID,    field_value: event_duration },
+        ]);
+      }
+    } catch (_) { /* GHL sync is best-effort */ }
+
+    return res.json({ success: true, message: 'Event updated.', event });
+  } catch (err) { next(err); }
+};
+
+// ── DELETE /api/management/events/:id — Permanently delete an event ──────────
 const deleteEvent = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await Event.findByIdAndUpdate(id, { status: 'archived' });
-    return res.json({ success: true, message: 'Event archived.' });
+    const event = await Event.findByIdAndDelete(id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+
+    // Also remove associated notifications
+    await Notification.deleteMany({ reference_id: id });
+
+    // Remove from GHL (best-effort)
+    try {
+      const ghlConfig = require('../config/ghl');
+      const searchResult = await ghlService.ghlApiGet('/contacts/search', {
+        locationId: ghlConfig.api.locationId,
+        query: `EVENT: ${event.event_name}`,
+      });
+      const contacts = searchResult.contacts || [];
+      if (contacts.length > 0) {
+        await ghlService.ghlApiDelete(`/contacts/${contacts[0].id}`);
+      }
+    } catch (_) { /* best-effort */ }
+
+    return res.json({ success: true, message: 'Event deleted.' });
   } catch (err) { next(err); }
 };
 
@@ -163,6 +240,6 @@ const markAllNotificationsRead = async (req, res, next) => {
 };
 
 module.exports = {
-  createEvent, getEvents, deleteEvent,
+  createEvent, getEvents, getEventById, updateEvent, deleteEvent,
   getActiveEvents, getNotifications, markNotificationRead, markAllNotificationsRead,
 };
