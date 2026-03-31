@@ -8,6 +8,10 @@ const Notification  = require('../models/Notification');
 const todaySGT = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
 
+// ── Facility vs Venue helper ────────────────────────────────────────────────
+const FACILITIES = ['Tennis', 'Squash', 'Gym'];
+const facilityOrVenue = (name) => FACILITIES.includes(name) ? 'Facility' : 'Venue';
+
 // ── Venue capacity config ────────────────────────────────────────────────────
 const VENUE_CAPACITY = {
   'Tennis':            { cap: 4, type: 'slot' },       // 4 courts, 1 booking/slot each
@@ -248,12 +252,13 @@ const createBlock = async (req, res, next) => {
     } catch (_) { /* GHL sync is best-effort */ }
 
     // Create notification for all members
+    const label = facilityOrVenue(facility);
     const displayDate = new Date(date + 'T00:00:00+08:00').toLocaleDateString('en-SG', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
     await Notification.create({
       type:         'notice',
-      title:        `Facility Block: ${facility}`,
+      title:        `${label} Block: ${facility}`,
       message:      `${facility} is blocked on ${displayDate} from ${startTime} to ${endTime}. Reason: ${reason}`,
       reference_id: booking_reference,
       category:     'facility',
@@ -283,6 +288,7 @@ const removeBlock = async (req, res, next) => {
     // Notify members that the block has been lifted
     const blockDoc = await bookingStore.getByReference(booking_reference);
     if (blockDoc) {
+      const label = facilityOrVenue(blockDoc.facility_or_venue);
       const displayDate = blockDoc.slot_date
         ? new Date(blockDoc.slot_date + 'T00:00:00+08:00').toLocaleDateString('en-SG', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -290,8 +296,8 @@ const removeBlock = async (req, res, next) => {
         : '';
       await Notification.create({
         type:         'notice',
-        title:        `Block Removed: ${blockDoc.facility_or_venue || 'Facility'}`,
-        message:      `The block on ${blockDoc.facility_or_venue || 'a facility'} for ${displayDate} (${blockDoc.slot_start_time || ''} – ${blockDoc.slot_end_time || ''}) has been lifted. The slot is now available for booking.`,
+        title:        `${label} Block Removed: ${blockDoc.facility_or_venue}`,
+        message:      `The block on ${blockDoc.facility_or_venue} for ${displayDate} (${blockDoc.slot_start_time || ''} – ${blockDoc.slot_end_time || ''}) has been lifted. The ${label.toLowerCase()} is now available for booking.`,
         reference_id: booking_reference,
         category:     'facility',
         created_by:   req.mgmt?.displayName || req.mgmt?.username || 'Management',
@@ -334,13 +340,14 @@ const updateBlock = async (req, res, next) => {
     } catch (_) { /* best-effort */ }
 
     // Notify members of the updated block
+    const label = facilityOrVenue(facility);
     const displayDate = new Date(date + 'T00:00:00+08:00').toLocaleDateString('en-SG', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
     await Notification.create({
       type:         'notice',
-      title:        `Block Updated: ${facility}`,
-      message:      `The facility block for ${facility} has been updated. New schedule: ${displayDate}, ${startTime} – ${endTime}. Reason: ${reason}`,
+      title:        `${label} Block Updated: ${facility}`,
+      message:      `The ${label.toLowerCase()} block for ${facility} has been updated. New schedule: ${displayDate}, ${startTime} – ${endTime}. Reason: ${reason}`,
       reference_id: booking_reference,
       category:     'facility',
       created_by:   req.mgmt?.displayName || req.mgmt?.username || 'Management',
@@ -511,8 +518,41 @@ const getFullRecord = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── Periodic: auto-notify members when blocks finish naturally ───────────────
+const processExpiredBlocks = async () => {
+  try {
+    const now     = new Date();
+    const nowDate = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+    const nowTime = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit', hour12: false });
+
+    const expired = await bookingStore.getExpiredBlocks(nowDate, nowTime);
+    for (const b of expired) {
+      const label = facilityOrVenue(b.facility_or_venue);
+      const displayDate = b.slot_date
+        ? new Date(b.slot_date + 'T00:00:00+08:00').toLocaleDateString('en-SG', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+          })
+        : '';
+
+      await Notification.create({
+        type:         'notice',
+        title:        `${label} Block Ended: ${b.facility_or_venue}`,
+        message:      `The block on ${b.facility_or_venue} for ${displayDate} (${b.slot_start_time || ''} – ${b.slot_end_time || ''}) has ended. The ${label.toLowerCase()} is now available for booking.`,
+        reference_id: b.booking_reference,
+        category:     'facility',
+        created_by:   'Management',
+      });
+
+      await bookingStore.markBlockExpired(b.booking_reference);
+    }
+    if (expired.length) console.log(`[Block Expiry] Notified members for ${expired.length} expired block(s).`);
+  } catch (err) {
+    console.error('[Block Expiry] Error processing expired blocks:', err.message);
+  }
+};
+
 module.exports = {
   getDashboard, getSchedule, getOccupancy, getAnalytics, getNoShows, getGuests,
   getFees, getBlocks, createBlock, updateBlock, removeBlock, overrideStatus, addNote,
-  markPaid, waiveFee, flagMember, adjustQuota, getFullRecord,
+  markPaid, waiveFee, flagMember, adjustQuota, getFullRecord, processExpiredBlocks,
 };

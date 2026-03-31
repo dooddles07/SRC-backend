@@ -114,6 +114,14 @@ app.listen(PORT, () => {
       console.warn(`[Keep-alive] Ping failed: ${err.message}`);
     }
   }, PING_INTERVAL_MS);
+
+  // ── Check for expired facility blocks every 5 minutes ────────────────────
+  const { processExpiredBlocks } = require('./controllers/managementController');
+  const BLOCK_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Run once on startup, then every 5 minutes
+  processExpiredBlocks();
+  setInterval(processExpiredBlocks, BLOCK_CHECK_INTERVAL_MS);
 });
 
 module.exports = app;

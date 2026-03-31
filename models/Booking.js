@@ -21,6 +21,7 @@ const bookingSchema = new mongoose.Schema(
     fee_waived:        { type: Boolean, default: false },
     waiver_reason:     { type: String },
     waiver_by:         { type: String },
+    expiry_notified:   { type: Boolean, default: false },
   },
   { timestamps: true }
 );

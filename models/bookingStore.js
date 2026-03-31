@@ -96,6 +96,25 @@ async function getBlocks() {
   }).sort({ slot_date: 1, slot_start_time: 1 }).lean();
 }
 
+async function getExpiredBlocks(nowDate, nowTime) {
+  return Booking.find({
+    booking_type:    'block',
+    booking_status:  { $regex: /^confirmed$/i },
+    expiry_notified: { $ne: true },
+    $or: [
+      { slot_date: { $lt: nowDate } },
+      { slot_date: nowDate, slot_end_time: { $lte: nowTime } },
+    ],
+  }).lean();
+}
+
+async function markBlockExpired(booking_reference) {
+  return Booking.findOneAndUpdate(
+    { booking_reference },
+    { expiry_notified: true }
+  );
+}
+
 async function updateBlock(booking_reference, updates) {
   const allowed = ['facility_or_venue', 'slot_date', 'slot_start_time', 'slot_end_time', 'notes'];
   const filtered = {};
@@ -126,5 +145,5 @@ async function markFeePaid(booking_reference, actioned_by) {
 module.exports = {
   save, getByMember, updateStatus, updateBooking, getByDate, getByDateAndVenues,
   getLateCancellations, flagLateCancellation, waiveFee, getByReference,
-  getAllBookings, getNoShows, getGuestPasses, getBlocks, updateBlock, getAllLateCancellations, markFeePaid,
+  getAllBookings, getNoShows, getGuestPasses, getBlocks, getExpiredBlocks, markBlockExpired, updateBlock, getAllLateCancellations, markFeePaid,
 };
