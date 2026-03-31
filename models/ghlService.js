@@ -322,4 +322,6 @@ module.exports = {
   updateContactCustomFields,
   addContactNote,
   addContactTags,
+  ghlApiPost,
+  ghlApiGet,
 };

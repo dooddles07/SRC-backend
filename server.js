@@ -31,6 +31,7 @@ const memberRoutes       = require('./routes/member');
 const calendarRoutes     = require('./routes/calendar');
 const staffRoutes        = require('./routes/staff');
 const managementRoutes   = require('./routes/management');
+const eventRoutes        = require('./routes/events');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -59,8 +60,8 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan('dev'));
 
 // ── Health check ──────────────────────────────────────────────────────────────
@@ -86,6 +87,7 @@ app.use('/api/member',            memberRoutes);
 app.use('/api/calendars',         calendarRoutes);
 app.use('/api/staff',             staffRoutes);
 app.use('/api/management',        managementRoutes);
+app.use('/api/events',            eventRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {
