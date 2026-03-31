@@ -77,7 +77,9 @@ const getOccupancy = async (req, res, next) => {
 
     const gymPax = gym.reduce((sum, b) => sum + (parseInt(b.outlet_pax) || 1), 0);
 
-    // F&B — split by shift
+    // F&B — split by shift, count by pax (seats) not booking count
+    const sumPax = (arr) => arr.reduce((sum, b) => sum + (parseInt(b.outlet_pax) || 1), 0);
+
     const leMansion = active.filter(b => /le.?mansion/i.test(b.facility_or_venue));
     const leMansionLunch  = leMansion.filter(b => /lunch/i.test(b.booking_shift));
     const leMansionDinner = leMansion.filter(b => /dinner/i.test(b.booking_shift));
@@ -92,10 +94,10 @@ const getOccupancy = async (req, res, next) => {
         tennis:           { count: tennis.length, cap: 4 },
         squash:           { count: squash.length, cap: 1 },
         gym:              { count: gymPax, cap: 20 },
-        leMansionLunch:   { count: leMansionLunch.length, cap: 15, buffer: 3 },
-        leMansionDinner:  { count: leMansionDinner.length, cap: 15, buffer: 3 },
-        barkers:          { count: barkers.length, cap: 10, buffer: 2 },
-        oasis:            { count: oasis.length, cap: 12, buffer: 2 },
+        leMansionLunch:   { count: sumPax(leMansionLunch), cap: 15, buffer: 3 },
+        leMansionDinner:  { count: sumPax(leMansionDinner), cap: 15, buffer: 3 },
+        barkers:          { count: sumPax(barkers), cap: 10, buffer: 2 },
+        oasis:            { count: sumPax(oasis), cap: 12, buffer: 2 },
       },
     });
   } catch (err) { next(err); }
