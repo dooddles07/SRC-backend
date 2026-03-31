@@ -67,24 +67,26 @@ const searchMember = async (req, res, next) => {
     // If the member ever booked before, their email is in MongoDB.
     // Email IS a standard GHL field, so searching by it always works.
     if (!contact) {
-      const pastBookings = await bookingStore.getByMember(membership_number);
-      const email = pastBookings.find((b) => b.email)?.email;
-      if (email) {
-        const ghlContact = await ghlService.findContactByEmail(email);
-        if (ghlContact) {
-          // Verify the custom field actually matches to avoid false positives
-          const field = ghlContact.customFields?.find(
-            (f) => f.fieldKey === 'contact.membership_number'
-          );
-          if (field && field.value === String(membership_number)) {
-            contact = ghlContact;
+      try {
+        const pastBookings = await bookingStore.getByMember(membership_number);
+        const email = pastBookings.find((b) => b.email)?.email;
+        if (email) {
+          const ghlContact = await ghlService.findContactByEmail(email);
+          if (ghlContact) {
+            // Verify the custom field actually matches to avoid false positives
+            const field = ghlContact.customFields?.find(
+              (f) => f.fieldKey === 'contact.membership_number'
+            );
+            if (field && field.value === String(membership_number)) {
+              contact = ghlContact;
+            }
           }
         }
-      }
+      } catch (_) { /* non-fatal — fall through to next strategy */ }
     }
 
-    // ── Strategy 3: dev-mode fallback (same accounts as member portal) ──────
-    if (!contact && process.env.NODE_ENV === 'development') {
+    // ── Strategy 3: built-in member fallback (test / seed accounts) ──────────
+    if (!contact) {
       const dev = DEV_MEMBERS.find((m) => m.membership_number === membership_number);
       if (dev) {
         contact = {
