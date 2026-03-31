@@ -33,6 +33,7 @@ router.put('/waive-fee',              mgmt.waiveFee);
 // Facility Blocks
 router.get('/blocks',                  mgmt.getBlocks);
 router.post('/blocks',                 mgmt.createBlock);
+router.put('/blocks/:booking_reference',    mgmt.updateBlock);
 router.delete('/blocks/:booking_reference', mgmt.removeBlock);
 
 // Shared actions (override status, add note, view full record)

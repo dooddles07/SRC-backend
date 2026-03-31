@@ -1,8 +1,9 @@
 // controllers/managementController.js
 // All management dashboard endpoints — reads from MongoDB, writes to GHL + MongoDB.
 
-const ghlService   = require('../models/ghlService');
-const bookingStore = require('../models/bookingStore');
+const ghlService    = require('../models/ghlService');
+const bookingStore  = require('../models/bookingStore');
+const Notification  = require('../models/Notification');
 
 const todaySGT = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
@@ -246,7 +247,20 @@ const createBlock = async (req, res, next) => {
       });
     } catch (_) { /* GHL sync is best-effort */ }
 
-    return res.json({ success: true, message: 'Block created.', booking_reference });
+    // Create notification for all members
+    const displayDate = new Date(date + 'T00:00:00+08:00').toLocaleDateString('en-SG', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+    await Notification.create({
+      type:         'notice',
+      title:        `Facility Block: ${facility}`,
+      message:      `${facility} is blocked on ${displayDate} from ${startTime} to ${endTime}. Reason: ${reason}`,
+      reference_id: booking_reference,
+      category:     'facility',
+      created_by:   req.mgmt?.displayName || req.mgmt?.username || 'Management',
+    });
+
+    return res.json({ success: true, message: 'Block created and members notified.', booking_reference });
   } catch (err) { next(err); }
 };
 
@@ -266,7 +280,73 @@ const removeBlock = async (req, res, next) => {
       }
     } catch (_) { /* best-effort */ }
 
+    // Notify members that the block has been lifted
+    const blockDoc = await bookingStore.getByReference(booking_reference);
+    if (blockDoc) {
+      const displayDate = blockDoc.slot_date
+        ? new Date(blockDoc.slot_date + 'T00:00:00+08:00').toLocaleDateString('en-SG', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+          })
+        : '';
+      await Notification.create({
+        type:         'notice',
+        title:        `Block Removed: ${blockDoc.facility_or_venue || 'Facility'}`,
+        message:      `The block on ${blockDoc.facility_or_venue || 'a facility'} for ${displayDate} (${blockDoc.slot_start_time || ''} – ${blockDoc.slot_end_time || ''}) has been lifted. The slot is now available for booking.`,
+        reference_id: booking_reference,
+        category:     'facility',
+        created_by:   req.mgmt?.displayName || req.mgmt?.username || 'Management',
+      });
+    }
+
     return res.json({ success: true, message: 'Block removed. Slot is now available.' });
+  } catch (err) { next(err); }
+};
+
+// ── PUT /api/management/blocks/:booking_reference ───────────────────────────
+const updateBlock = async (req, res, next) => {
+  try {
+    const { booking_reference } = req.params;
+    const { facility, date, startTime, endTime, reason } = req.body;
+    if (!facility || !date || !startTime || !endTime || !reason) {
+      return res.status(422).json({ success: false, message: 'All fields are required.' });
+    }
+
+    const updated = await bookingStore.updateBlock(booking_reference, {
+      facility_or_venue: facility,
+      slot_date:         date,
+      slot_start_time:   startTime,
+      slot_end_time:     endTime,
+      notes:             reason,
+    });
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Block not found.' });
+    }
+
+    // Sync update to GHL (best-effort)
+    try {
+      const contact = await ghlService.findContactByReference(booking_reference);
+      if (contact) {
+        await ghlService.updateContactCustomFields(contact.id, [
+          { id: 'booking_status', field_value: 'Confirmed' },
+        ]);
+      }
+    } catch (_) { /* best-effort */ }
+
+    // Notify members of the updated block
+    const displayDate = new Date(date + 'T00:00:00+08:00').toLocaleDateString('en-SG', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+    await Notification.create({
+      type:         'notice',
+      title:        `Block Updated: ${facility}`,
+      message:      `The facility block for ${facility} has been updated. New schedule: ${displayDate}, ${startTime} – ${endTime}. Reason: ${reason}`,
+      reference_id: booking_reference,
+      category:     'facility',
+      created_by:   req.mgmt?.displayName || req.mgmt?.username || 'Management',
+    });
+
+    return res.json({ success: true, message: 'Block updated and members notified.', block: updated });
   } catch (err) { next(err); }
 };
 
@@ -433,6 +513,6 @@ const getFullRecord = async (req, res, next) => {
 
 module.exports = {
   getDashboard, getSchedule, getOccupancy, getAnalytics, getNoShows, getGuests,
-  getFees, getBlocks, createBlock, removeBlock, overrideStatus, addNote,
+  getFees, getBlocks, createBlock, updateBlock, removeBlock, overrideStatus, addNote,
   markPaid, waiveFee, flagMember, adjustQuota, getFullRecord,
 };

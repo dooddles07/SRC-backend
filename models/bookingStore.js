@@ -96,6 +96,21 @@ async function getBlocks() {
   }).sort({ slot_date: 1, slot_start_time: 1 }).lean();
 }
 
+async function updateBlock(booking_reference, updates) {
+  const allowed = ['facility_or_venue', 'slot_date', 'slot_start_time', 'slot_end_time', 'notes'];
+  const filtered = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) filtered[key] = updates[key];
+  }
+  // Keep the name field in sync with reason
+  if (filtered.notes) filtered.name = `BLOCK: ${filtered.notes}`;
+  return Booking.findOneAndUpdate(
+    { booking_reference, booking_type: 'block' },
+    filtered,
+    { new: true }
+  ).lean();
+}
+
 async function getAllLateCancellations() {
   return Booking.find({ late_cancellation: true }).sort({ updatedAt: -1 }).lean();
 }
@@ -111,5 +126,5 @@ async function markFeePaid(booking_reference, actioned_by) {
 module.exports = {
   save, getByMember, updateStatus, updateBooking, getByDate, getByDateAndVenues,
   getLateCancellations, flagLateCancellation, waiveFee, getByReference,
-  getAllBookings, getNoShows, getGuestPasses, getBlocks, getAllLateCancellations, markFeePaid,
+  getAllBookings, getNoShows, getGuestPasses, getBlocks, updateBlock, getAllLateCancellations, markFeePaid,
 };
