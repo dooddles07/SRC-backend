@@ -72,4 +72,44 @@ async function getByReference(booking_reference) {
   return Booking.findOne({ booking_reference }).lean();
 }
 
-module.exports = { save, getByMember, updateStatus, updateBooking, getByDate, getByDateAndVenues, getLateCancellations, flagLateCancellation, waiveFee, getByReference };
+// ── Management-specific queries ──────────────────────────────────────────────
+
+async function getAllBookings(filter = {}) {
+  return Booking.find(filter).sort({ slot_date: -1, slot_start_time: 1 }).lean();
+}
+
+async function getNoShows() {
+  return Booking.find({ booking_status: { $regex: /^no.?show$/i } }).sort({ updatedAt: -1 }).lean();
+}
+
+async function getGuestPasses(monthStart, monthEnd) {
+  return Booking.find({
+    booking_type: 'guest_pass',
+    slot_date: { $gte: monthStart, $lte: monthEnd },
+  }).sort({ slot_date: -1 }).lean();
+}
+
+async function getBlocks() {
+  return Booking.find({
+    booking_type: 'block',
+    booking_status: { $regex: /^confirmed$/i },
+  }).sort({ slot_date: 1, slot_start_time: 1 }).lean();
+}
+
+async function getAllLateCancellations() {
+  return Booking.find({ late_cancellation: true }).sort({ updatedAt: -1 }).lean();
+}
+
+async function markFeePaid(booking_reference, actioned_by) {
+  return Booking.findOneAndUpdate(
+    { booking_reference },
+    { booking_status: 'late_fee_paid', waiver_by: actioned_by },
+    { new: true }
+  );
+}
+
+module.exports = {
+  save, getByMember, updateStatus, updateBooking, getByDate, getByDateAndVenues,
+  getLateCancellations, flagLateCancellation, waiveFee, getByReference,
+  getAllBookings, getNoShows, getGuestPasses, getBlocks, getAllLateCancellations, markFeePaid,
+};

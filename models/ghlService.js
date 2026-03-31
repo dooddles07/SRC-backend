@@ -292,6 +292,16 @@ const updateContactCustomFields = async (contactId, customFields) => {
   return ghlApiPut(`/contacts/${contactId}`, { customFields });
 };
 
+// ─── GHL API: Add a note to a contact ────────────────────────────────────────
+const addContactNote = async (contactId, body) => {
+  return ghlApiPost(`/contacts/${contactId}/notes`, { body });
+};
+
+// ─── GHL API: Add/remove tags on a contact ───────────────────────────────────
+const addContactTags = async (contactId, tags) => {
+  return ghlApiPost(`/contacts/${contactId}/tags`, { tags });
+};
+
 module.exports = {
   sendBooking,
   sendCancellation,
@@ -310,4 +320,6 @@ module.exports = {
   getContactAppointments,
   getCalendarFreeSlots,
   updateContactCustomFields,
+  addContactNote,
+  addContactTags,
 };
