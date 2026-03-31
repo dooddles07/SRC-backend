@@ -5,14 +5,13 @@
 const jwt = require('jsonwebtoken');
 
 // ── Staff account list ────────────────────────────────────────────────────────
-// Roles: frontdesk → staff.html | security → staff-qr.html | fnb → staff-fnb.html | admin → staff.html
+// Roles: frontdesk → staff.html | security → staff-qr.html | fnb → staff-fnb.html
 const STAFF_ACCOUNTS = [
   { username: 'frontdesk1',  password: 'SRC@Desk1',  role: 'frontdesk', displayName: 'Front Desk 1'  },
   { username: 'frontdesk2',  password: 'SRC@Desk2',  role: 'frontdesk', displayName: 'Front Desk 2'  },
   { username: 'frontdesk3',  password: 'SRC@Desk3',  role: 'frontdesk', displayName: 'Front Desk 3'  },
   { username: 'security1',   password: 'SRC@Sec1',   role: 'security',  displayName: 'Security 1'    },
   { username: 'fnb_manager', password: 'SRC@FnB1',   role: 'fnb',       displayName: 'F&B Manager'   },
-  { username: 'admin',       password: 'SRC@Admin1', role: 'admin',     displayName: 'Administrator' },
 ];
 
 const staffLogin = async (req, res, next) => {

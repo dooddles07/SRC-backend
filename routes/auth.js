@@ -3,7 +3,8 @@ const express = require('express');
 const router  = express.Router();
 const { body } = require('express-validator');
 const { login }       = require('../controllers/authController');
-const { staffLogin }  = require('../controllers/staffAuthController');
+const { staffLogin }        = require('../controllers/staffAuthController');
+const { managementLogin }   = require('../controllers/managementAuthController');
 
 // Member login (membership number + email)
 router.post(
@@ -17,5 +18,8 @@ router.post(
 
 // Staff login (username + password)
 router.post('/staff/login', staffLogin);
+
+// Management login (username + password)
+router.post('/management/login', managementLogin);
 
 module.exports = router;
