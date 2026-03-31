@@ -20,4 +20,12 @@ router.get('/notifications',          authenticate, eventCtrl.getNotifications);
 router.put('/notifications/read-all', authenticate, eventCtrl.markAllNotificationsRead);
 router.put('/notifications/:id/read', authenticate, eventCtrl.markNotificationRead);
 
+// ── Reply routes (member auth) ──────────────────────────────────────────────
+router.get('/notifications/:id/replies',  authenticate, eventCtrl.getReplies);
+router.post('/notifications/:id/replies', authenticate, eventCtrl.createReply);
+
+// ── Inbox routes (management auth) ──────────────────────────────────────────
+router.get('/inbox',                           managementAuthenticate, eventCtrl.getInbox);
+router.post('/inbox/:notification_id/reply',   managementAuthenticate, eventCtrl.createManagementReply);
+
 module.exports = router;

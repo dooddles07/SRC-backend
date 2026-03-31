@@ -3,6 +3,7 @@
 
 const Event        = require('../models/Event');
 const Notification = require('../models/Notification');
+const Reply        = require('../models/Reply');
 const ghlService   = require('../models/ghlService');
 
 // ── GHL custom field IDs for events ──────────────────────────────────────────
@@ -239,7 +240,110 @@ const markAllNotificationsRead = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── POST /api/events/notifications/:id/replies — Member sends a reply ───────
+const createReply = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    const membership_number = req.user?.membership_number || '';
+    const sender_name = req.user?.name || 'Member';
+
+    if (!message || !message.trim()) {
+      return res.status(422).json({ success: false, message: 'Message is required.' });
+    }
+
+    // Verify the notification exists and is a facility category (not events)
+    const notification = await Notification.findById(id).lean();
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notice not found.' });
+    }
+    if (notification.category === 'events') {
+      return res.status(403).json({ success: false, message: 'Replies are not allowed on event notices.' });
+    }
+
+    const reply = await Reply.create({
+      notification_id:   id,
+      sender_type:       'member',
+      sender_name,
+      membership_number,
+      message:           message.trim(),
+    });
+
+    return res.json({ success: true, message: 'Reply sent.', reply });
+  } catch (err) { next(err); }
+};
+
+// ── GET /api/events/notifications/:id/replies — Get replies for a notice ────
+const getReplies = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const replies = await Reply.find({ notification_id: id }).sort({ createdAt: 1 }).lean();
+    return res.json({ success: true, count: replies.length, replies });
+  } catch (err) { next(err); }
+};
+
+// ── GET /api/events/inbox — Management: get all replies grouped by notice ───
+const getInbox = async (req, res, next) => {
+  try {
+    // Get all notifications that have replies
+    const replies = await Reply.find().sort({ createdAt: -1 }).lean();
+
+    // Group by notification_id
+    const grouped = {};
+    for (const r of replies) {
+      if (!grouped[r.notification_id]) {
+        grouped[r.notification_id] = {
+          notification_id: r.notification_id,
+          replies: [],
+          latest_at: r.createdAt,
+        };
+      }
+      grouped[r.notification_id].replies.push(r);
+    }
+
+    // Fetch notification details for each group
+    const threads = [];
+    for (const nid of Object.keys(grouped)) {
+      const notif = await Notification.findById(nid).lean();
+      threads.push({
+        notification: notif || { _id: nid, title: 'Unknown Notice', message: '' },
+        replies: grouped[nid].replies.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
+        latest_at: grouped[nid].latest_at,
+      });
+    }
+
+    // Sort threads by latest reply
+    threads.sort((a, b) => new Date(b.latest_at) - new Date(a.latest_at));
+
+    return res.json({ success: true, count: threads.length, threads });
+  } catch (err) { next(err); }
+};
+
+// ── POST /api/events/inbox/:notification_id/reply — Management replies ──────
+const createManagementReply = async (req, res, next) => {
+  try {
+    const { notification_id } = req.params;
+    const { message } = req.body;
+    const sender_name = req.mgmt?.displayName || req.mgmt?.username || 'Management';
+
+    if (!message || !message.trim()) {
+      return res.status(422).json({ success: false, message: 'Message is required.' });
+    }
+
+    const reply = await Reply.create({
+      notification_id,
+      sender_type:       'management',
+      sender_name,
+      membership_number: 'MGMT',
+      message:           message.trim(),
+    });
+
+    return res.json({ success: true, message: 'Reply sent.', reply });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   createEvent, getEvents, getEventById, updateEvent, deleteEvent,
   getActiveEvents, getNotifications, markNotificationRead, markAllNotificationsRead,
+  createReply, getReplies, getInbox, createManagementReply,
 };
