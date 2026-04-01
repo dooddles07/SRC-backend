@@ -4,6 +4,7 @@
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const ghlService = require('../models/ghlService');
+const Member = require('../models/Member');
 
 // ── Dev-only member accounts (used when NODE_ENV=development) ─────────────────
 // These let you test the API without needing real GHL contacts.
@@ -49,8 +50,26 @@ const login = async (req, res, next) => {
     const { membership_number, email } = req.body;
     let member = null;
 
-    // ── Dev mode: check local accounts first ──────────────────────────────────
-    if (process.env.NODE_ENV === 'development') {
+    // ── Check MongoDB first (profile may have been updated via Edit Profile) ──
+    const savedMember = await Member.findOne({
+      membership_number,
+      email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+    });
+
+    if (savedMember) {
+      const nameParts = (savedMember.name || '').trim().split(/\s+/);
+      member = {
+        id:                savedMember.ghl_contact_id || membership_number,
+        membership_number,
+        email:             savedMember.email,
+        firstName:         nameParts[0] || '',
+        lastName:          nameParts.slice(1).join(' ') || '',
+        phone:             savedMember.phone || '',
+      };
+    }
+
+    // ── Dev mode: check local accounts ────────────────────────────────────────
+    if (!member && process.env.NODE_ENV === 'development') {
       member = DEV_MEMBERS.find(
         (m) =>
           m.membership_number === membership_number &&

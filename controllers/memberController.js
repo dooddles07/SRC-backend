@@ -4,6 +4,7 @@
 const ghlService   = require('../models/ghlService');
 const ghlConfig    = require('../config/ghl');
 const bookingStore = require('../models/bookingStore');
+const Member       = require('../models/Member');
 
 // ── GET /api/member/bookings ──────────────────────────────────────────────────
 // Reads from MongoDB (written at booking time) so the dashboard has data
@@ -127,11 +128,19 @@ const updateMemberProfile = async (req, res, next) => {
       await ghlService.ghlApiPut(`/contacts/${contactId}`, payload);
     }
 
+    // Persist to MongoDB so login can use updated data
+    const fullName = `${firstName} ${lastName}`.trim();
+    await Member.findOneAndUpdate(
+      { membership_number: req.user.membership_number },
+      { name: fullName, email, phone: phone || '', ghl_contact_id: contactId },
+      { upsert: true, new: true }
+    );
+
     return res.status(200).json({
       success: true,
       member: {
         membership_number: req.user.membership_number,
-        name:  `${firstName} ${lastName}`.trim(),
+        name:  fullName,
         email,
         phone: phone || '',
       },
