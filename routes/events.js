@@ -16,6 +16,7 @@ router.delete('/management/:id', managementAuthenticate, eventCtrl.deleteEvent);
 router.get('/active',        authenticate, eventCtrl.getActiveEvents);
 
 // ── Notification routes (require member auth) ────────────────────────────────
+router.get('/notifications/poll',     authenticate, eventCtrl.pollNotifications);
 router.get('/notifications',          authenticate, eventCtrl.getNotifications);
 router.put('/notifications/read-all', authenticate, eventCtrl.markAllNotificationsRead);
 router.put('/notifications/:id/read', authenticate, eventCtrl.markNotificationRead);
