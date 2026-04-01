@@ -37,6 +37,12 @@ const createBooking = async (req, res, next) => {
       special_request,
     } = req.body;
 
+    // Reject bookings on past dates
+    const todaySG = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+    if (slot_date < todaySG) {
+      return res.status(422).json({ success: false, message: 'Cannot book on a past date.' });
+    }
+
     // Generate reference number
     const booking_reference = generateBookingReference(slot_date);
 

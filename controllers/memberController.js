@@ -86,6 +86,14 @@ const updateMemberBooking = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'This booking can no longer be edited.' });
     }
 
+    // Reject updates to a past date
+    if (req.body.slot_date) {
+      const todaySG = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+      if (req.body.slot_date < todaySG) {
+        return res.status(422).json({ success: false, message: 'Cannot reschedule to a past date.' });
+      }
+    }
+
     const updated = await bookingStore.updateBooking(reference, req.body);
     return res.status(200).json({ success: true, booking: updated });
   } catch (err) {
@@ -93,4 +101,40 @@ const updateMemberBooking = async (req, res, next) => {
   }
 };
 
-module.exports = { getBookingByReference, getMemberBookings, updateMemberBooking };
+// ── PUT /api/member/profile ──────────────────────────────────────────────────
+// Allows a member to update their own profile (name, email, phone).
+// Persists changes to GHL so they survive logout/login.
+const updateMemberProfile = async (req, res, next) => {
+  try {
+    const { id: contactId } = req.user;
+    const { name, email, phone } = req.body;
+
+    if (!name || !email) {
+      return res.status(422).json({ success: false, message: 'Name and email are required.' });
+    }
+
+    // Split full name into firstName / lastName for GHL
+    const nameParts = name.trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const lastName  = nameParts.slice(1).join(' ') || '';
+
+    const payload = { firstName, lastName, email };
+    if (phone !== undefined) payload.phone = phone;
+
+    await ghlService.ghlApiPut(`/contacts/${contactId}`, payload);
+
+    return res.status(200).json({
+      success: true,
+      member: {
+        membership_number: req.user.membership_number,
+        name:  `${firstName} ${lastName}`.trim(),
+        email,
+        phone: phone || '',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getBookingByReference, getMemberBookings, updateMemberBooking, updateMemberProfile };

@@ -72,6 +72,7 @@ const login = async (req, res, next) => {
           email:             match.email,
           firstName:         match.firstName || '',
           lastName:          match.lastName  || '',
+          phone:             match.phone     || '',
         };
       }
     }
@@ -103,6 +104,7 @@ const login = async (req, res, next) => {
         membership_number: member.membership_number,
         email:             member.email,
         name:              fullName,
+        phone:             member.phone || '',
       },
     });
   } catch (err) {

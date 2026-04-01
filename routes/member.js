@@ -2,7 +2,10 @@
 const express  = require('express');
 const router   = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { getBookingByReference, getMemberBookings, updateMemberBooking } = require('../controllers/memberController');
+const { getBookingByReference, getMemberBookings, updateMemberBooking, updateMemberProfile } = require('../controllers/memberController');
+
+// PUT /api/member/profile  — update logged-in member's profile
+router.put('/profile', authenticate, updateMemberProfile);
 
 // GET /api/member/bookings  — all bookings for the logged-in member
 router.get('/bookings', authenticate, getMemberBookings);
