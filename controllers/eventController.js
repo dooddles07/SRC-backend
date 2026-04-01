@@ -131,7 +131,7 @@ const updateEvent = async (req, res, next) => {
       }
     } catch (_) { /* GHL sync is best-effort */ }
 
-    // Create notification for event update so members see the announce banner
+    // Create notification for event update so members are informed
     await Notification.create({
       type:         'notice',
       title:        `Event Updated: ${event_name}`,
@@ -141,7 +141,7 @@ const updateEvent = async (req, res, next) => {
       created_by:   req.mgmt.displayName || req.mgmt.username || 'Management',
     });
 
-    return res.json({ success: true, message: 'Event updated and notifications sent.', event });
+    return res.json({ success: true, message: 'Event updated and members notified.', event });
   } catch (err) { next(err); }
 };
 
@@ -191,31 +191,6 @@ const getActiveEvents = async (req, res, next) => {
     }));
 
     return res.json({ success: true, count: mapped.length, events: mapped });
-  } catch (err) { next(err); }
-};
-
-// ── GET /api/notifications/poll — Lightweight check for new notifications ────
-const pollNotifications = async (req, res, next) => {
-  try {
-    const since = req.query.since;                       // ISO timestamp
-    const membership_number = req.user?.membership_number || '';
-
-    const query = since ? { createdAt: { $gt: new Date(since) } } : {};
-    const newCount = await Notification.countDocuments(query);
-
-    // Also return total unread count for badge
-    const allNotifs = await Notification.find().select('read_by createdAt').lean();
-    const unreadCount = allNotifs.filter(n => !n.read_by.includes(membership_number)).length;
-
-    // Latest notification timestamp
-    const latest = await Notification.findOne().sort({ createdAt: -1 }).select('createdAt').lean();
-
-    return res.json({
-      success: true,
-      new_count:    newCount,
-      unread_count: unreadCount,
-      latest_at:    latest ? latest.createdAt : null,
-    });
   } catch (err) { next(err); }
 };
 
