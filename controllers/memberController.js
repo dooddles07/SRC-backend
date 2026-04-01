@@ -2,6 +2,7 @@
 // Read-only data endpoints that the frontend calls to display booking info
 
 const ghlService   = require('../models/ghlService');
+const ghlConfig    = require('../config/ghl');
 const bookingStore = require('../models/bookingStore');
 
 // ── GET /api/member/bookings ──────────────────────────────────────────────────
@@ -118,7 +119,7 @@ const updateMemberProfile = async (req, res, next) => {
     const firstName = nameParts[0];
     const lastName  = nameParts.slice(1).join(' ') || '';
 
-    const payload = { firstName, lastName, email };
+    const payload = { firstName, lastName, email, locationId: ghlConfig.api.locationId };
     if (phone !== undefined) payload.phone = phone;
 
     await ghlService.ghlApiPut(`/contacts/${contactId}`, payload);
