@@ -122,6 +122,22 @@ app.listen(PORT, () => {
   // Run once on startup, then every 5 minutes
   processExpiredBlocks();
   setInterval(processExpiredBlocks, BLOCK_CHECK_INTERVAL_MS);
+
+  // ── Auto-mark past confirmed bookings as "Done" every 5 minutes ─────────
+  const bookingStore = require('./models/bookingStore');
+  const processExpiredBookings = async () => {
+    try {
+      const now     = new Date();
+      const nowDate = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+      const nowTime = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit', hour12: false });
+      const count   = await bookingStore.markPastConfirmedDone(nowDate, nowTime);
+      if (count) console.log(`[Booking Expiry] Marked ${count} past booking(s) as Done.`);
+    } catch (err) {
+      console.error('[Booking Expiry] Error:', err.message);
+    }
+  };
+  processExpiredBookings();
+  setInterval(processExpiredBookings, BLOCK_CHECK_INTERVAL_MS);
 });
 
 module.exports = app;

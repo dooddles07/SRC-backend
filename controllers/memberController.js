@@ -84,7 +84,7 @@ const updateMemberBooking = async (req, res, next) => {
     }
 
     const status = (existing.booking_status || '').toLowerCase().replace(/[\s_]+/g, '-');
-    if (['cancelled', 'checked-in', 'no-show'].includes(status)) {
+    if (['cancelled', 'checked-in', 'no-show', 'done', 'late-fee-paid'].includes(status)) {
       return res.status(400).json({ success: false, message: 'This booking can no longer be edited.' });
     }
 

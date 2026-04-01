@@ -142,8 +142,25 @@ async function markFeePaid(booking_reference, actioned_by) {
   );
 }
 
+// ── Auto-expire past confirmed bookings → "Done" ────────────────────────────
+async function markPastConfirmedDone(nowDate, nowTime) {
+  const result = await Booking.updateMany(
+    {
+      booking_status: { $regex: /^confirmed$/i },
+      booking_type:   { $nin: ['block'] },
+      $or: [
+        { slot_date: { $lt: nowDate } },
+        { slot_date: nowDate, slot_end_time: { $ne: null, $lte: nowTime } },
+      ],
+    },
+    { booking_status: 'Done' }
+  );
+  return result.modifiedCount || 0;
+}
+
 module.exports = {
   save, getByMember, updateStatus, updateBooking, getByDate, getByDateAndVenues,
   getLateCancellations, flagLateCancellation, waiveFee, getByReference,
   getAllBookings, getNoShows, getGuestPasses, getBlocks, getExpiredBlocks, markBlockExpired, updateBlock, getAllLateCancellations, markFeePaid,
+  markPastConfirmedDone,
 };
