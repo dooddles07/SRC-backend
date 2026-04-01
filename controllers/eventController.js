@@ -194,6 +194,16 @@ const getActiveEvents = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ── GET /api/notifications/poll — Poll for unread notification count ────────
+const pollNotifications = async (req, res, next) => {
+  try {
+    const membership_number = req.user?.membership_number || '';
+    const notifications = await Notification.find().sort({ createdAt: -1 }).limit(50).lean();
+    const unreadCount = notifications.filter(n => !n.read_by.includes(membership_number)).length;
+    return res.json({ success: true, unreadCount });
+  } catch (err) { next(err); }
+};
+
 // ── GET /api/notifications — Member: get notifications ───────────────────────
 const getNotifications = async (req, res, next) => {
   try {
