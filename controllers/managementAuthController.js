@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 
 // ── Management account list ──────────────────────────────────────────────────
 const MANAGEMENT_ACCOUNTS = [
-  { username: 'nick', password: 'Nick123', displayName: 'Nick' },
+  { username: 'admin', password: 'admin123', displayName: 'Admin' },
 ];
 
 const managementLogin = async (req, res, next) => {
