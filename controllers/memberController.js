@@ -119,10 +119,13 @@ const updateMemberProfile = async (req, res, next) => {
     const firstName = nameParts[0];
     const lastName  = nameParts.slice(1).join(' ') || '';
 
-    const payload = { firstName, lastName, email, locationId: ghlConfig.api.locationId };
-    if (phone !== undefined) payload.phone = phone;
-
-    await ghlService.ghlApiPut(`/contacts/${contactId}`, payload);
+    // Only call GHL for real contacts (skip dev accounts with fake IDs)
+    const isDevAccount = contactId && contactId.startsWith('dev-');
+    if (!isDevAccount) {
+      const payload = { firstName, lastName, email, locationId: ghlConfig.api.locationId };
+      if (phone !== undefined) payload.phone = phone;
+      await ghlService.ghlApiPut(`/contacts/${contactId}`, payload);
+    }
 
     return res.status(200).json({
       success: true,
