@@ -134,6 +134,12 @@ const updateMemberProfile = async (req, res, next) => {
       },
     });
   } catch (err) {
+    console.error('updateMemberProfile error:', {
+      contactId: req.user?.id,
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message,
+    });
     next(err);
   }
 };
