@@ -131,7 +131,17 @@ const updateEvent = async (req, res, next) => {
       }
     } catch (_) { /* GHL sync is best-effort */ }
 
-    return res.json({ success: true, message: 'Event updated.', event });
+    // Create notification for event update so members see the announce banner
+    await Notification.create({
+      type:         'notice',
+      title:        `Event Updated: ${event_name}`,
+      message:      event_description.length > 150 ? event_description.slice(0, 150) + '...' : event_description,
+      reference_id: event._id.toString(),
+      category:     'events',
+      created_by:   req.mgmt.displayName || req.mgmt.username || 'Management',
+    });
+
+    return res.json({ success: true, message: 'Event updated and notifications sent.', event });
   } catch (err) { next(err); }
 };
 
