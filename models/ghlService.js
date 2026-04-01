@@ -338,5 +338,6 @@ module.exports = {
   addContactTags,
   ghlApiPost,
   ghlApiGet,
+  ghlApiPut,
   ghlApiDelete,
 };
