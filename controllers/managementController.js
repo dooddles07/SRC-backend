@@ -37,7 +37,7 @@ const getDashboard = async (req, res, next) => {
     const noShows    = bookings.filter(b => /^no.?show$/i.test(b.booking_status)).length;
     const cancelled  = bookings.filter(b => /^cancelled$/i.test(b.booking_status)).length;
     const lateCancel = lateCancellations.length;
-    const guests     = bookings.filter(b => b.booking_type === 'guest_pass').length;
+    const guests     = bookings.filter(b => ['guest_pass', 'guest'].includes(b.booking_type)).length;
 
     // Utilisation: (confirmed + checked_in) / total capacity
     const active = bookings.filter(b =>

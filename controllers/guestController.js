@@ -44,7 +44,7 @@ const registerGuest = async (req, res, next) => {
       email,
       name:              guest_name,
       facility_or_venue,
-      booking_type:      'guest',
+      booking_type:      'guest_pass',
       booking_status:    'Confirmed',
       booking_shift:     booking_shift || '',
       slot_date,

@@ -84,7 +84,8 @@ async function getNoShows() {
 
 async function getGuestPasses(monthStart, monthEnd) {
   return Booking.find({
-    booking_type: 'guest_pass',
+    booking_type: { $in: ['guest_pass', 'guest'] },
+    booking_status: { $regex: /^checked.?in$/i },
     slot_date: { $gte: monthStart, $lte: monthEnd },
   }).sort({ slot_date: -1 }).lean();
 }
